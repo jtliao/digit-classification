@@ -18,20 +18,24 @@ def perform_pca(features):
 def find_kmeans(features, seed):
     seed_values = [[None] * num_seeds for _ in range(num_digits)]
     centroid = []
+    #get values of seed indices
     for i in range(num_digits):
         for j in range(num_seeds):
             seed_values[i][j] = [features[seed[i][j] - 1][0], features[seed[i][j] - 1][1]]
-    for z in range(num_digits):
-        x = [p[0] for p in seed_values[z][:]]
-        y = [p[1] for p in seed_values[z][:]]
+    #find centroid of seed values
+    for dig in range(num_digits):
+        x = [point[0] for point in seed_values[dig][:]]
+        y = [point[1] for point in seed_values[dig][:]]
         centroid.append([float(sum(x))/num_seeds, float(sum(y))/num_seeds])
+    #perform kmeans
     kmeans = KMeans(n_clusters=num_digits, init=np.array(centroid))
-    c = kmeans.fit_predict(features)
+    assignments = kmeans.fit_predict(features)
+
     with open("out.csv", "wb") as f:
         writer = csv.writer(f)
         writer.writerow(["Id", "Category"])
-        for ind in range(0, 12000):
-            writer.writerow([ind + 1, c[ind]])
+        for ind in range(12000):
+            writer.writerow([ind + 1, assignments[ind]])
     # color = []
     # for i in c:
     #     d = {0: 'yellow', 1: 'white', 2: 'violet', 3: 'blue', 4: 'green', 5: 'brown', 6: 'black', 7: 'orange',
