@@ -3,14 +3,15 @@ from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA, KernelPCA
 from sklearn.preprocessing import normalize
 from sklearn.svm import SVC
-from sklearn.cluster import SpectralClustering
 from sklearn.manifold import SpectralEmbedding
+from scipy.linalg import eigh
+from numpy.linalg import inv
 import matplotlib.pyplot as plt
 import csv
 import numpy as np
 import random
 import math
-
+from copy import copy
 
 
 num_seeds = 3
@@ -63,8 +64,6 @@ def get_seed_values(features, seed, dimensions):
 def find_kmeans(features, seed_values, dims):
     centroid = []
 
-
-
     #find centroid of seed values
     for dig in range(num_digits):
         list_of_dims = []
@@ -77,6 +76,52 @@ def find_kmeans(features, seed_values, dims):
     kmeans = KMeans(n_clusters=num_digits, n_init=1, init=np.array(centroid))
     assignments = kmeans.fit_predict(features)
     return assignments
+
+
+def spectral(adjacency, seeds):
+    d = [[0 for _ in range(12000)] for _ in range(12000)]
+    for i in range(12000):
+        total = 0
+        for j in range(12000):
+            total += adjacency[i][j]
+        if total == 0:
+            d[i][i] = 0
+        else:
+            d[i][i] = float(1.0/math.sqrt(total))
+
+    identity = [[1 if x == y else 0 for x in range(12000)] for y in range(12000)]
+    l = identity - np.dot(np.dot(d, adjacency), d)
+
+    w, v = eigh(l, eigvals=(11997, 11999))
+    sed = get_seed_values(v, seeds, 3)
+    return v, find_kmeans(v, sed), sed
+
+
+def cca(features):
+    # col_vars = []
+    # for i in range(103):
+    #     col_values = []
+    #     for j in range(12000):
+    #         col_values.append(features[j, i])
+    #     col_vars.append(np.std(col_values))
+    # print col_vars # prints the variance of each col
+
+    view1 = features[:, 0:13]
+    view2 = features[:, 100:103]
+    concat = np.concatenate((view1, view2), axis=1)
+    co = np.cov(concat, rowvar=False)
+    eigval, eigvec = eigh(np.dot(np.dot(np.dot(inv(co[0:13, 0:13]), co[0:13, 13:16]), inv(co[13:16, 13:16])),
+                                 co[13:16, 0:13]), eigvals=(10, 12))
+    # need to reverse the columns of eigvec, since it outputs in ascending order
+    reversed_eigvec = copy(eigvec)
+    for i in range(13):
+        for j in range(3):
+            if j == 0:
+                reversed_eigvec[i][j] = eigvec[i][2]
+            if j == 2:
+                reversed_eigvec[i][j] = eigvec[i][0]
+    projected = np.dot(view1, reversed_eigvec)
+    return projected
 
 
 def svm(features, seeds):
@@ -123,7 +168,6 @@ def do_gmm(features, seed_values):
     return assignments
 
 
-
 # Creates 2 plots:
 # 1st plot plots predicted digit of all of the points
 # 2nd plot plots actual digit of all of the seeds
@@ -152,9 +196,6 @@ def plot_preds(features, preds, seeds):
     raw_input()
 
 
-
-
-
 def normalize_variances(features):
     features = np.array(features)
     [num_examples, num_features] = np.shape(features)
@@ -172,44 +213,10 @@ def normalize_variances(features):
     return normalized
 
 
-def cca(view1, view2, k):
-    view1 = np.array(view1)
-    view2 = np.array(view2)
-
-    d1 = np.shape(view1)[1]
-    d2 = np.shape(view2)[1]
-
-    X = np.concatenate((view1, view2), 1)
-    n = np.shape(X)[0]
-
-    SIG = 1 / n * np.matmul(X.T * X)
-
-    SIG11 = SIG[0:d1, 0:d1] + 10 ^ (-8) * np.identity(d1)
-    SIG22 = SIG[(d1 + 0):(d1 + d2), (d1 + 0):(d1 + d2)] + 10 ^ (-8) * np.identity(d2)
-    SIG12 = SIG[0:d1, (d1 + 0):(d1 + d2)]
-    SIG21 = SIG12.T
-
-    [eigvals1, eigvectors1] = np.linalg.eigh(np.inv(SIG11) * SIG12 * np.inv(SIG22) * SIG21, eigvals=(11997,11999));
-    # [D, order] = sort(diag(D), 'descend'); %  # sort cols high to low
-    # V = V[:, order];
-    # W = V(:, 1:k);
-
-    [eigvals2, eigvectors2] = np.linalg.eigh(np.inv(SIG22) * SIG21 * np.inv(SIG11) * SIG12, eigvals=(11997,11999));
-    # [DD, order2] = sort(diag(DD), 'descend'); %  # sort cols high to low
-    # VV = VV(:, order2);
-    # WW = VV(:, 1:k);
-
-    Y = view1 * eigvectors1;
-    YY = view2 * eigvectors2;
-
-    return (Y,YY)
-
-
 def spectral(features, adj):
     spec = SpectralEmbedding(n_components = 3, affinity = "precomputed")
     d = spec.fit_transform(adj)
     return d
-
 
 
 def main():
@@ -228,32 +235,15 @@ def main():
     # means = np.sum(normalized, 0) / np.shape(normalized)[0]
     # print(np.sqrt(np.sum(np.square(normalized - np.repeat([means], np.shape(normalized)[0], 0)), 0)))
 
-
-    dims = 2
-    preprocessed = preproc(features, dims)
-
-    # preprocessed = normalize_variances(preprocessed)
-    seed_values = get_seed_values(preprocessed, seed, dims)
-
-    # assignments = do_gmm(pca, seed_values)
-    assignments = find_kmeans(preprocessed, seed_values, dims)
-    plot_preds(preprocessed, assignments, seed_values)
-
-    # print(seed_values)
-    #
-    # assignments = find_kmeans(pca, seed_values)
-    # plot_preds(preprocessed, assignments, seed_values)
-
-    # seed = np.array(seed)
-    #
+    dim = 3
     # preprocessed = preproc(features, 3)
-    # seed_values = get_seed_values(preprocessed, seed, 3)
-    #
-    # assignments = spectral(features, adjacency)
-    # # assignments = find_kmeans(preprocessed, seed_values)
-    # print_csv(assignments)
-    # plot_preds(pca, assignments, seed_values)
+    ccad = cca(features)
+    seed_values = get_seed_values(ccad, seed, dim)
 
+    # data, assignments, seed_values = spectral(features, adjacency, seed)
+    assignments = find_kmeans(ccad, seed_values, dim)
+    print_csv(assignments)
+    #plot_preds(data, assignments, seed_values)
 
 
 if __name__ == "__main__":
