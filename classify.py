@@ -1,4 +1,4 @@
-import pandas as pd
+from sklearn.mixture import GaussianMixture
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
@@ -7,7 +7,6 @@ import numpy as np
 
 num_seeds = 3
 num_digits = 10
-
 
 def perform_pca(features):
     pca = PCA(n_components=2)
@@ -18,6 +17,7 @@ def perform_pca(features):
 
 
 # Gets seed features from features using seed to identify which points are seeds
+# Do this after PCA because this only gets 2 dimensions of the feature
 def get_seed_values(features, seed):
     seed_values = [[None] * num_seeds for _ in range(num_digits)]
     # get values of seed indices
@@ -49,6 +49,39 @@ def find_kmeans(features, seed_values):
     return assignments
 
 
+def do_gmm(features, seed_values):
+    centroid = []
+
+    # find centroid of seed values
+    for dig in range(num_digits):
+        x = [point[0] for point in seed_values[dig][:]]
+        y = [point[1] for point in seed_values[dig][:]]
+        centroid.append([float(sum(x)) / num_seeds, float(sum(y)) / num_seeds])
+
+
+    tmp = []
+    for dig in range(num_digits):
+        for feature in seed_values[dig]:
+            tmp.append(feature)
+
+    # perform gmm
+    gmm = GaussianMixture(n_components=10, covariance_type="full")
+    gmm.fit(features)
+    print(gmm.means_)
+    print(gmm.predict(tmp))
+    assignments = gmm.predict(features)
+    print(assignments)
+
+    with open("out_gmm.csv", "wb") as f:
+        writer = csv.writer(f)
+        writer.writerow(["Id", "Category"])
+        for ind in range(12000):
+            writer.writerow([ind + 1, assignments[ind]])
+
+    return assignments
+
+
+
 # Creates 2 plots:
 # 1st plot plots predicted digit of all of the points
 # 2nd plot plots actual digit of all of the seeds
@@ -77,6 +110,24 @@ def plot_preds(features, preds, seeds):
     raw_input()
 
 
+def normalize_variances(features):
+    features = np.array(features)
+    [num_examples, num_features] = np.shape(features)
+
+    means = np.sum(features, 0) / num_examples
+
+    # print(means)
+    # print(np.shape(means))
+    #
+    # print(np.square(features - np.repeat([means], num_examples, 0)))
+
+    normalized = features / (np.repeat([np.sqrt(np.sum(np.square(features - np.repeat([means], num_examples, 0)), 0))], num_examples, 0))
+    # print(np.shape(normalized))
+
+    return normalized
+
+
+
 def main():
     with open("features.csv", "r") as f:
         features = [list(map(float, rec)) for rec in csv.reader(f)]
@@ -84,13 +135,22 @@ def main():
     #     adjacency = [list(map(float, rec)) for rec in csv.reader(f)]
     with open("seed.csv", "r") as f:
         seed = [list(map(int, rec)) for rec in csv.reader(f)]
+    # print(np.shape(features))
+    #
+    # normalized = normalize_variances(features)
+    # means = np.sum(normalized, 0) / np.shape(normalized)[0]
+    # print(np.sqrt(np.sum(np.square(normalized - np.repeat([means], np.shape(normalized)[0], 0)), 0)))
 
     pca = perform_pca(features)
     # print(pca)
     seed_values = get_seed_values(pca, seed)
-    # print(seed_values)
 
-    assignments = find_kmeans(pca, seed_values)
+    assignments = do_gmm(pca, seed_values)
+
+
+    # print(seed_values)
+    #
+    # assignments = find_kmeans(pca, seed_values)
     plot_preds(pca, assignments, seed_values)
 
 
