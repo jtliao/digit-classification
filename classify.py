@@ -1,12 +1,9 @@
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-<<<<<<< Updated upstream
 from sklearn.preprocessing import normalize
 from sklearn.svm import SVC
 from sklearn.cluster import SpectralClustering
-=======
->>>>>>> Stashed changes
 from sklearn.manifold import SpectralEmbedding
 import matplotlib.pyplot as plt
 import csv
