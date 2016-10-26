@@ -1,9 +1,12 @@
 import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
+<<<<<<< Updated upstream
 from sklearn.preprocessing import normalize
 from sklearn.svm import SVC
 from sklearn.cluster import SpectralClustering
+=======
+>>>>>>> Stashed changes
 from sklearn.manifold import SpectralEmbedding
 import matplotlib.pyplot as plt
 import csv
@@ -118,6 +121,12 @@ def plot_preds(features, preds, seeds):
 
     # Word-around to get 2 plots to stay up at a time
     raw_input()
+
+
+def spectral(features, adj):
+    spec = SpectralEmbedding(n_components = 3, affinity = "precomputed")
+    d = spec.fit_transform(adj)
+    return d
 
 
 def main():
