@@ -10,7 +10,7 @@ import csv
 import numpy as np
 import random
 import math
-
+from scipy import linalg
 
 
 num_seeds = 3
@@ -172,38 +172,6 @@ def normalize_variances(features):
     return normalized
 
 
-def cca(view1, view2, k):
-    view1 = np.array(view1)
-    view2 = np.array(view2)
-
-    d1 = np.shape(view1)[1]
-    d2 = np.shape(view2)[1]
-
-    X = np.concatenate((view1, view2), 1)
-    n = np.shape(X)[0]
-
-    SIG = 1 / n * np.matmul(X.T * X)
-
-    SIG11 = SIG[0:d1, 0:d1] + 10 ^ (-8) * np.identity(d1)
-    SIG22 = SIG[(d1 + 0):(d1 + d2), (d1 + 0):(d1 + d2)] + 10 ^ (-8) * np.identity(d2)
-    SIG12 = SIG[0:d1, (d1 + 0):(d1 + d2)]
-    SIG21 = SIG12.T
-
-    [eigvals1, eigvectors1] = np.linalg.eigh(np.inv(SIG11) * SIG12 * np.inv(SIG22) * SIG21, eigvals=(11997,11999));
-    # [D, order] = sort(diag(D), 'descend'); %  # sort cols high to low
-    # V = V[:, order];
-    # W = V(:, 1:k);
-
-    [eigvals2, eigvectors2] = np.linalg.eigh(np.inv(SIG22) * SIG21 * np.inv(SIG11) * SIG12, eigvals=(11997,11999));
-    # [DD, order2] = sort(diag(DD), 'descend'); %  # sort cols high to low
-    # VV = VV(:, order2);
-    # WW = VV(:, 1:k);
-
-    Y = view1 * eigvectors1;
-    YY = view2 * eigvectors2;
-
-    return (Y,YY)
-
 
 def spectral(features, adj):
     spec = SpectralEmbedding(n_components = 3, affinity = "precomputed")
@@ -222,6 +190,13 @@ def main():
     with open("seed.csv", "r") as f:
         seed = [list(map(int, rec)) for rec in csv.reader(f)]
 
+
+    dims = 2
+
+    view1 = features[:, 1:13]
+    view2 = features[:, -3:]
+
+
     # print(np.shape(features))
     #
     # normalized = normalize_variances(features)
@@ -229,15 +204,15 @@ def main():
     # print(np.sqrt(np.sum(np.square(normalized - np.repeat([means], np.shape(normalized)[0], 0)), 0)))
 
 
-    dims = 2
-    preprocessed = preproc(features, dims)
-
-    # preprocessed = normalize_variances(preprocessed)
-    seed_values = get_seed_values(preprocessed, seed, dims)
-
-    # assignments = do_gmm(pca, seed_values)
-    assignments = find_kmeans(preprocessed, seed_values, dims)
-    plot_preds(preprocessed, assignments, seed_values)
+    # dims = 2
+    # preprocessed = preproc(features, dims)
+    #
+    # # preprocessed = normalize_variances(preprocessed)
+    # seed_values = get_seed_values(preprocessed, seed, dims)
+    #
+    # # assignments = do_gmm(pca, seed_values)
+    # assignments = find_kmeans(preprocessed, seed_values, dims)
+    # plot_preds(preprocessed, assignments, seed_values)
 
     # print(seed_values)
     #
