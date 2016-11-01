@@ -244,16 +244,18 @@ def main():
 
     dim = 3
 
-    # preprocessed = preproc(features, 3)
-    ccad = cca(features)
-    seed_values = get_seed_values(ccad, seed, dim)
+    preprocessed = preproc(features, dim)
+    seed_values = get_seed_values(preprocessed, seed, dim)
+
+    # ccad = cca(features)
+    # seed_values = get_seed_values(ccad, seed, dim)
 
     # data, assignments, seed_values = spectral(features, adjacency, seed)
-    # assignments = find_kmeans(ccad, seed_values, dim)
-    assignments = do_gmm(ccad, seed_values)
+    assignments = find_kmeans(preprocessed, seed_values, dim)
+    # assignments = do_gmm(ccad, seed_values)
     print_csv(assignments)
 
-    plot_preds(features, assignments, seed, dims=dim)
+    plot_preds(preprocessed, assignments, seed, dims=dim)
 
     #plot_preds(data, assignments, seed_values)
 
